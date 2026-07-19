@@ -1,46 +1,64 @@
-// add deleteUser function to app.js
+// app.js
+const express = require('express');
+const app = express();
+app.use(express.json());
 
-/**
- * deleteUser(userId, users)
- * Removes a user with the given id from the provided users array.
- * - If the user is found and removed, returns true.
- * - If the user is not found, returns false.
- * - Throws an error if userId is not provided or users is not an array.
- *
- * This is a synchronous utility function that operates on an in-memory array.
- * If your app uses a database, replace this implementation with the appropriate
- * async database call (e.g. using an ORM or direct DB query).
- *
- * Example:
- *   const users = [{ id: '1', name: 'A' }, { id: '2', name: 'B' }];
- *   deleteUser('2', users); // returns true, users now [{ id: '1', name: 'A' }]
- */
-function deleteUser(userId, users) {
-  if (userId === undefined || userId === null) {
-    throw new Error('deleteUser: userId is required');
-  }
-  if (!Array.isArray(users)) {
-    throw new Error('deleteUser: users must be an array');
-  }
+// In-memory users store (id -> user)
+const users = {};
 
-  const index = users.findIndex((u) => u && (u.id === userId || u._id === userId));
-  if (index === -1) {
-    return false; // user not found
+// Create a new user
+function createUser(req, res) {
+  const id = Date.now().toString();
+  const { name, email } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: 'name and email are required' });
   }
-
-  users.splice(index, 1);
-  return true; // user removed
+  users[id] = { id, name, email };
+  return res.status(201).json(users[id]);
 }
 
-// CommonJS export if used in this project
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports.deleteUser = deleteUser;
+// Get a user by id
+function getUser(req, res) {
+  const { id } = req.params;
+  const user = users[id];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  return res.json(user);
 }
 
-// For ES modules, also provide a named export if supported
-try {
-  // This will only work in environments that support exports
-  exports.deleteUser = deleteUser; // eslint-disable-line no-undef
-} catch (e) {
-  // ignore if exports is not available
+// Update a user by id
+function updateUser(req, res) {
+  const { id } = req.params;
+  const user = users[id];
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const { name, email } = req.body;
+  users[id] = { ...user, ...(name ? { name } : {}), ...(email ? { email } : {}) };
+  return res.json(users[id]);
 }
+
+// Delete a user by id
+// Added deleteUser function as requested. It removes the user from the in-memory store
+// and returns 204 No Content on success, or 404 if the user does not exist.
+function deleteUser(req, res) {
+  const { id } = req.params;
+  const user = users[id];
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  delete users[id];
+  // 204 No Content — successful deletion
+  return res.status(204).send();
+}
+
+// Routes
+app.post('/users', createUser);
+app.get('/users/:id', getUser);
+app.put('/users/:id', updateUser);
+app.delete('/users/:id', deleteUser);
+
+// Start server if run directly
+const PORT = process.env.PORT || 3000;
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+module.exports = { app, createUser, getUser, updateUser, deleteUser };
