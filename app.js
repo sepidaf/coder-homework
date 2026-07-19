@@ -1,9 +1,1 @@
-let users = [];
-
-function addUser(name) {
-    users.push(name);
-    return "User added";
-}
-
-console.log(addUser("Ali"));
-console.log(users);
+let users = [];  function addUser(name) {     users.push(name);     return "User added"; }  function deleteUser(name) {     users = users.filter(user => user !== name);     return "User deleted"; }  console.log(addUser("Ali")); console.log(users);
